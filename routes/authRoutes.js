@@ -24,9 +24,16 @@ router.get('/signup', (req, res) => {
     });
 });
 
-// Route Login// Route Login
+// Route Login
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
+
+    // Hardcoded admin user check
+    if (username === 'admin' && password === 'admin') {
+        // Set session for admin
+        req.session.userId = 'admin'; // You can set this as a special identifier
+        return res.redirect('/index'); // Redirect to the admin page
+    }
 
     db.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
         if (err) return res.status(500).send('Error fetching user');
@@ -36,14 +43,15 @@ router.post('/login', (req, res) => {
             if (err) return res.status(500).send('Error checking password');
             if (!isMatch) return res.status(401).send('Incorrect password');
 
-            // Simpan userId dalam sesi setelah login berhasil
+            // Save userId in session after successful login
             req.session.userId = results[0].id;
 
             // Redirect to the homepage (index) after successful login
-            res.redirect('/index'); // Redirect to the homepage
+            res.redirect('/'); // Redirect to the homepage
         });
     });
 });
+
 
 
 // Route untuk menampilkan form login

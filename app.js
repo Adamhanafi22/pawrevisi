@@ -93,7 +93,16 @@ app.get('/report', (req, res) => {
              reports: reports });
     });
 });
+// Export the app for testing
+module.exports = app;
 
+// Start the server only if this file is run directly
+// if (require.main === module) {
+//   const port = process.env.PORT || 3002;
+//   app.listen(port, () => {
+//     console.log(`Server running at http://localhost:${port}/`);
+//   });
+// }
 app.post('/api/contact', (req, res) => {
     const { name, address, phone, message } = req.body;
     if (!name || !address || !phone || !message) {
