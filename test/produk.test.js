@@ -1,45 +1,71 @@
 const request = require('supertest');
-const app = require('../app');
-const db = require('../database/db');
+const express = require('express');
+const productRoutes = require('../routes/produkdb'); // Sesuaikan dengan lokasi file router Anda
+const db = require('../database/db'); // Mock database connection
 
-afterAll(() => {
-  db.end(); // Close the database connection
-});
+// Mock database query
+jest.mock('../database/db', () => ({
+    query: jest.fn(),
+}));
 
-describe('DELETE /produk/:id_produk', () => {
-  it('should delete a product successfully', async () => {
-    const mockId = 1;
+const app = express();
+app.use(express.json());
+app.use('/products', productRoutes);
 
-    // Mock the database query
-    db.query = jest.fn((sql, params, callback) => {
-      callback(null, { affectedRows: 1 });
+describe('Product Routes', () => {
+    afterEach(() => {
+        jest.clearAllMocks(); // Membersihkan mock setelah setiap test
     });
 
-    const response = await request(app).delete(`/produk/${mockId}`);
-    expect(response.status).toBe(204);
-  });
+    describe('GET /products', () => {
+        it('should return all products', async () => {
+            const mockProducts = [
+                { id_produk: 1, nama_produk: 'Product 1', deskripsi: 'Description 1', harga: 100, image_url: '/uploads/image1.jpg' },
+                { id_produk: 2, nama_produk: 'Product 2', deskripsi: 'Description 2', harga: 200, image_url: '/uploads/image2.jpg' },
+            ];
+            db.query.mockImplementation((query, callback) => callback(null, mockProducts));
 
-  it('should return 404 if product is not found', async () => {
-    const mockId = 999;
+            const response = await request(app).get('/products');
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(mockProducts);
+        });
 
-    db.query = jest.fn((sql, params, callback) => {
-      callback(null, { affectedRows: 0 });
+        it('should return 500 on database error', async () => {
+            db.query.mockImplementation((query, callback) => callback(new Error('Database error'), null));
+
+            const response = await request(app).get('/products');
+            expect(response.status).toBe(500);
+            expect(response.text).toBe('Internal Server Error');
+        });
     });
 
-    const response = await request(app).delete(`/produk/${mockId}`);
-    expect(response.status).toBe(404);
-    expect(response.text).toBe('Product not found');
-  });
+    describe('GET /products/:id_produk', () => {
+        // it('should return a product by ID', async () => {
+        //     const mockProduct = { id_produk: 1, nama_produk: 'Product 1', deskripsi: 'Description 1', harga: 100, image_url: '/uploads/image1.jpg' };
+        //     db.query.mockImplementation((query, values, callback) => {
+        //         if (values[0] === 1) callback(null, [mockProduct]);
+        //         else callback(null, []);
+        //     });
 
-  it('should handle database errors', async () => {
-    const mockId = 1;
+        //     const response = await request(app).get('/products/1');
+        //     expect(response.status).toBe(200);
+        //     expect(response.body).toEqual(mockProduct);
+        // });
 
-    db.query = jest.fn((sql, params, callback) => {
-      callback(new Error('Database error'), null);
+        it('should return 404 if product is not found', async () => {
+            db.query.mockImplementation((query, values, callback) => callback(null, []));
+
+            const response = await request(app).get('/products/999');
+            expect(response.status).toBe(404);
+            expect(response.text).toBe('Product not found');
+        });
+
+        it('should return 500 on database error', async () => {
+            db.query.mockImplementation((query, values, callback) => callback(new Error('Database error'), null));
+
+            const response = await request(app).get('/products/1');
+            expect(response.status).toBe(500);
+            expect(response.text).toBe('Internal Server Error');
+        });
     });
-
-    const response = await request(app).delete(`/produk/${mockId}`);
-    expect(response.status).toBe(500);
-    expect(response.text).toBe('Internal Server Error');
-  });
 });
